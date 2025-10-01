@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>Kana to Romaji Tool</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* 默认深色模式 */
+        body.dark {background: #121212;color: #e0e0e0;}
+        body.dark header {background: #1f1f1f;color: #fff;}
+        body.dark textarea {background: #1e1e1e;color: #e0e0e0;border: 1px solid #333;}
+        body.dark button {background: #333;color: #fff;border: 1px solid #444;cursor: pointer;}
+        /* 浅色模式 */
+        body.light {background: #fdfdfd;color: #222;}
+        body.light header {background: #f0f0f0;color: #222;}
+        body.light textarea {background: #fff;color: #222;border: 1px solid #ccc;}
+        body.light button {background: #eee;color: #222;border: 1px solid #ccc;cursor: pointer;}
+
+        header {
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        header h2 {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0;
+        }
+        main { flex: 1; display: flex; padding-left: 70px;padding-right: 70px;padding-top: 40px; gap: 60px; }
+
+        textarea { width: 100%; height: 95%; padding: 10px; font-family: Consolas,serif; font-size: 14px; resize: none; border-radius: 8px; border: 1px solid #ccc; }
+        .textarea-container {
+            position: relative;
+            width: 50%;
+        }
+
+        /* 默认隐藏 */
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #666;
+            color: #fff;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        /* 悬停显示 */
+        .textarea-container:hover .copy-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        button { margin: 10px; padding: 6px 12px; border-radius: 4px; }
+    </style>
+</head>
+<body class="dark">
+<header>
+    <button onclick="location.href='/'">🏠 返回主页</button>
+    <h2 style="margin:0; text-align:center; flex:1;">Kana to Romaji Tool</h2>
+    <button onclick="toggleTheme()">切换主题</button>
+</header>
+<main>
+    <div class="textarea-container">
+        <label for="input" hidden="hidden">输入原始数据</label>
+        <textarea id="input" placeholder="在这里输入原始数据"></textarea>
+        <button class="copy-btn" onclick="copyText('input', this)">复制</button>
+    </div>
+    <div class="textarea-container">
+        <label for="output" hidden="hidden">处理结果</label>
+        <textarea id="output" placeholder="处理结果会显示在这里"></textarea>
+        <button class="copy-btn" onclick="copyText('output', this)">复制</button>
+    </div>
+</main>
+<div style="padding-left:50px;padding-top: 10px;">
+    <button onclick="processData()">处理</button>
+    <label>
+        <input type="checkbox" id="syncScroll" checked>
+        同步滚动
+    </label>
+</div>
+
+<script>
+    function toggleTheme() {
+        const body = document.body;
+        if (body.classList.contains("dark")) {
+            body.classList.remove("dark");
+            body.classList.add("light");
+        } else {
+            body.classList.remove("light");
+            body.classList.add("dark");
+        }
+    }
+
+    async function processData() {
+        const input = document.getElementById("input").value;
+        const resp = await fetch("/kana-to-romaji/handler", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: input })
+        });
+
+        document.getElementById("output").value = (await resp.text());
+    }
+
+    const inputBox = document.getElementById("input");
+    const outputBox = document.getElementById("output");
+    const syncCheckbox = document.getElementById("syncScroll");
+
+    let isSyncingInput = false;
+    let isSyncingOutput = false;
+
+    function syncScrollPercent(source, target) {
+        if (!syncCheckbox.checked) return;
+
+        const percent = source.scrollTop / (source.scrollHeight - source.clientHeight);
+        target.scrollTop = percent * (target.scrollHeight - target.clientHeight);
+    }
+
+    inputBox.addEventListener("scroll", () => {
+        if (isSyncingInput) { isSyncingInput = false; return; }
+        isSyncingOutput = true;
+        syncScrollPercent(inputBox, outputBox);
+    });
+
+    outputBox.addEventListener("scroll", () => {
+        if (isSyncingOutput) { isSyncingOutput = false; return; }
+        isSyncingInput = true;
+        syncScrollPercent(outputBox, inputBox);
+    });
+
+
+    function copyText(id, btn) {
+        const textarea = document.getElementById(id);
+        const originalText = btn.textContent;
+
+        navigator.clipboard.writeText(textarea.value).then(() => {
+            btn.textContent = "已复制";
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000); // 2秒后恢复
+        }).catch(err => {
+            console.error("复制失败:", err);
+            btn.textContent = "复制失败";
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        });
+    }
+</script>
+</body>
+</html>
