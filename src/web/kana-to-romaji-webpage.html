@@ -4,14 +4,21 @@
     <meta charset="UTF-8" />
     <title>Kana to Romaji Tool</title>
     <style>
-        body {
+        html, body {
+            margin: 0;
+            padding: 0;
             font-family: sans-serif;
+            transition: background 0.3s, color 0.3s;
+            /* 允许随内容滚动 */
+            height: auto;
+            min-height: 100%;
+            overflow-y: auto;
+        }
+        body {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            margin: 0;
-            transition: background 0.3s, color 0.3s;
         }
+
 
         /* 默认深色模式 */
         body.dark {background: #121212;color: #e0e0e0;}
@@ -22,6 +29,7 @@
         body.light {background: #fdfdfd;color: #222;}
         body.light header {background: #f0f0f0;color: #222;}
         body.light textarea {background: #fff;color: #222;border: 1px solid #ccc;}
+        body.light .highlight {background: yellow;}
         body.light button {background: #eee;color: #222;border: 1px solid #ccc;cursor: pointer;}
 
         header {
@@ -37,9 +45,23 @@
             transform: translateX(-50%);
             margin: 0;
         }
-        main { flex: 1; display: flex; padding-left: 70px;padding-right: 70px;padding-top: 40px; gap: 60px; }
+        main {
+            display: flex;
+            flex-direction: row; /* 默认左右排列 */
+            gap: 50px;
+            padding: 10vh 10vh 0;
+        }
 
-        textarea { width: 100%; height: 95%; padding: 10px; font-family: Consolas,serif; font-size: 14px; resize: none; border-radius: 8px; border: 1px solid #ccc; }
+        textarea {
+            width: 100%;
+            height: 60vh;
+            padding: 10px;
+            font-family: Consolas, serif;
+            font-size: 14px;
+            resize: none;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
         .textarea-container {
             position: relative;
             width: 50%;
@@ -68,6 +90,53 @@
             pointer-events: auto;
         }
 
+        /* 输出端高亮容器 */
+        .output-container {
+            position: relative;
+            width: 100%;
+            height: 95%;
+            font-family: Consolas, serif;
+            font-size: 14px;
+        }
+
+        /* 高亮层 */
+        #output-highlight {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+            padding: 10px;
+            color: transparent;        /* 默认文字透明 */
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            pointer-events: none;      /* 让点击穿透 */
+        }
+
+        /* 高亮的假名 */
+        .highlight {
+            background: blueviolet;
+            font-weight: bold;
+        }
+
+        /* 覆盖的 textarea */
+        #output {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background: transparent;   /* 透明背景，透出下面的高亮 */
+            resize: none;
+            overflow: auto;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+
         button { margin: 10px; padding: 6px 12px; border-radius: 4px; }
     </style>
 </head>
@@ -85,9 +154,13 @@
     </div>
     <div class="textarea-container">
         <label for="output" hidden="hidden">处理结果</label>
-        <textarea id="output" placeholder="处理结果会显示在这里"></textarea>
+        <div class="output-container">
+            <div id="output-highlight"></div>
+            <textarea id="output" placeholder="处理结果会显示在这里"></textarea>
+        </div>
         <button class="copy-btn" onclick="copyText('output', this)">复制</button>
     </div>
+
 </main>
 <div style="padding-left:50px;padding-top: 10px;">
     <button onclick="processData()">处理</button>
@@ -117,12 +190,27 @@
             body: JSON.stringify({ text: input })
         });
 
-        document.getElementById("output").value = (await resp.text());
+        const result = await resp.text();
+        document.getElementById("output").value = result;
+        updateHighlight(result);
     }
 
+    // 更新高亮层
+    function updateHighlight(text) {
+        let safeText = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        // 给“は”加高亮
+        safeText = safeText.replace(/は/g, '<span class="highlight">は</span>')
+            .replace(/へ/g, '<span class="highlight">へ</span>');
+        document.getElementById("output-highlight").innerHTML = safeText;
+    }
     const inputBox = document.getElementById("input");
     const outputBox = document.getElementById("output");
     const syncCheckbox = document.getElementById("syncScroll");
+    const outputHighlight = document.getElementById("output-highlight");
+
 
     let isSyncingInput = false;
     let isSyncingOutput = false;
@@ -139,8 +227,9 @@
         isSyncingOutput = true;
         syncScrollPercent(inputBox, outputBox);
     });
-
     outputBox.addEventListener("scroll", () => {
+        outputHighlight.scrollTop = outputBox.scrollTop;
+        outputHighlight.scrollLeft = outputBox.scrollLeft;
         if (isSyncingOutput) { isSyncingOutput = false; return; }
         isSyncingInput = true;
         syncScrollPercent(outputBox, inputBox);

@@ -74,7 +74,7 @@ function romajiForKanaSeq(seq: string): string {
             const pair = hiraSeq[i] + hiraSeq[i+1];
             if (kanaToRomaji[pair]) { out += kanaToRomaji[pair]; i += 2; continue; }
         }
-        if (ch === "は" || ch === "へ") { out += ch; i++; continue; }
+        //if (ch === "は" || ch === "へ") { out += ch; i++; continue; }
         out += kanaToRomaji[ch] || ch;
         i++;
     }

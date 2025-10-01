@@ -2,7 +2,7 @@
 <html lang="zh-cn">
 <head>
     <meta charset="UTF-8">
-    <title>StarFX 工具主页</title>
+    <title>StarFX的百宝盒</title>
     <style>
         body {
             font-family: sans-serif;
@@ -46,6 +46,12 @@
             align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: background 0.3s, color 0.3s;
+        }
+        header h2 {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0;
         }
 
         main {
@@ -125,6 +131,7 @@
 </head>
 <body class="dark">
 <header>
+    <h2 style="margin:0; text-align:center; flex:1;">StarFX的百宝盒</h2>
     <button onclick="toggleTheme()">切换主题</button>
 </header>
 <main>

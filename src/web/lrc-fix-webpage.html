@@ -4,13 +4,19 @@
     <meta charset="UTF-8" />
     <title>LRC Fix Tool</title>
     <style>
-        body {
+        html, body {
+            margin: 0;
+            padding: 0;
             font-family: sans-serif;
+            transition: background 0.3s, color 0.3s;
+            /* 允许随内容滚动 */
+            height: auto;
+            min-height: 100%;
+            overflow-y: auto;
+        }
+        body {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            margin: 0;
-            transition: background 0.3s, color 0.3s;
         }
 
         /* 默认深色模式 */
@@ -37,12 +43,35 @@
             transform: translateX(-50%);
             margin: 0;
         }
-        main { flex: 1; display: flex; padding-left: 70px;padding-right: 70px;padding-top: 40px; gap: 60px; }
+        main {
+            display: flex;
+            flex-direction: row; /* 默认左右排列 */
+            gap: 50px;
+            padding: 10vh 10vh 0;
+        }
 
-        textarea { width: 100%; height: 95%; padding: 10px; font-family: Consolas,serif; font-size: 14px; resize: none; border-radius: 8px; border: 1px solid #ccc; }
+        textarea {
+            width: 100%;
+            height: 60vh;
+            padding: 10px;
+            font-family: Consolas, serif;
+            font-size: 14px;
+            resize: none;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
         .textarea-container {
             position: relative;
             width: 50%;
+        }
+        @media (max-width: 768px) {
+            main {
+                flex-direction: column; /* 改成上下排列 */
+            }
+            .textarea-container {
+                position: relative;
+                width: 100%;
+            }
         }
 
         /* 默认隐藏 */
@@ -124,14 +153,27 @@
     const outputBox = document.getElementById("output");
     const syncCheckbox = document.getElementById("syncScroll");
 
-    function syncScroll(source, target) {
-        if (syncCheckbox.checked){
-            target.scrollTop = source.scrollTop;
-        }
+    let isSyncingInput = false;
+    let isSyncingOutput = false;
+
+    function syncScrollPercent(source, target) {
+        if (!syncCheckbox.checked) return;
+
+        const percent = source.scrollTop / (source.scrollHeight - source.clientHeight);
+        target.scrollTop = percent * (target.scrollHeight - target.clientHeight);
     }
 
-    inputBox.addEventListener("scroll", () => syncScroll(inputBox, outputBox));
-    outputBox.addEventListener("scroll", () => syncScroll(outputBox, inputBox));
+    inputBox.addEventListener("scroll", () => {
+        if (isSyncingInput) { isSyncingInput = false; return; }
+        isSyncingOutput = true;
+        syncScrollPercent(inputBox, outputBox);
+    });
+
+    outputBox.addEventListener("scroll", () => {
+        if (isSyncingOutput) { isSyncingOutput = false; return; }
+        isSyncingInput = true;
+        syncScrollPercent(outputBox, inputBox);
+    });
 
     function copyText(id, btn) {
         const textarea = document.getElementById(id);
