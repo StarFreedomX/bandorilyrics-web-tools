@@ -4,7 +4,10 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "body-parser": "^2.2.0",
@@ -13,7 +16,8 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitepress": "^2.0.0-alpha.12"
   },
   "private": true
 }

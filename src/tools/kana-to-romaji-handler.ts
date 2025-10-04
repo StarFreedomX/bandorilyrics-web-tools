@@ -1,4 +1,4 @@
-const kanaToRomaji: Record<string, string> = {
+export const kanaToRomaji: Record<string, string> = {
     //清音
     "あ":"a","い":"i","う":"u","え":"e","お":"o",
     "か":"ka","き":"ki","く":"ku","け":"ke","こ":"ko",
@@ -72,7 +72,7 @@ function kataToHiraChar(ch: string): string {
     return ch;
 }
 
-function romajiForKanaSeq(seq: string): string {
+function romajiForKanaSeq(seq: string, nextSeq?: string): string {
     //片假名转平假名
     const hiraSeq = [...seq].map(c => kataToHiraChar(c)).join("");
     let out = "";
@@ -94,6 +94,8 @@ function romajiForKanaSeq(seq: string): string {
                     else if (kanaToRomaji[hiraSeq[i+1]]) out += kanaToRomaji[hiraSeq[i+1]][0];
                 //下一个不是拗音，直接查下一个音，添加首字母
                 } else if (kanaToRomaji[hiraSeq[i+1]]) out += kanaToRomaji[hiraSeq[i+1]][0];
+            }else if (nextSeq && nextSeq.length) {
+                out += romajiForKanaSeq(nextSeq).slice(0,1);
             } else out += "t";
             i++; continue;
         }
@@ -175,13 +177,16 @@ function fixTimeStamp(tokens: Token[]): Token[] {
 
 
 //把B部分的假名转化为罗马音
-function convertBtoRomaji(B: string): string {
+function convertBtoRomaji(B: string, nextB?: string): string {
     //把B拆分为不同类型的分块
     let tokens = tokenizeB(B);
     //这里合并加号是为了处理拗音
     //如{しゅ|[1|00:26:88]し＋ゅ}{わ|[1|00:27:04]わ}{しゅ|[1|00:27:20]し＋ゅ}{わ|[1|00:27:55]わ}
     tokens = mergeJoinPluses(tokens);
     tokens = fixTimeStamp(tokens);
+    const nextBSeq = nextB ? mergeJoinPluses(tokenizeB(nextB)).filter(
+        (token) => token.type === "kana").map(token => token.text)
+        .join('').slice(0,2) : undefined
     let out = "";
     //如果类型为假名，那么转罗马音，组合tokens
     for (let i = 0; i < tokens.length; i++) {
@@ -194,9 +199,9 @@ function convertBtoRomaji(B: string): string {
                 ).map(token => token.text)
                     .join('').slice(0,2);
             if (t.text === SOKUON) {
-                out += romajiForKanaSeq(leftSentence).slice(0,1)
+                out += romajiForKanaSeq(leftSentence, nextBSeq).slice(0,1)
             }else {
-                out += romajiForKanaSeq(t.text)
+                out += romajiForKanaSeq(t.text, nextBSeq)
             }
         }else{
             out += t.text;
@@ -232,13 +237,22 @@ function processWholeText(text: string): string {
         const mt = matches[i];
         //把未匹配出来的原文加上去
         out += text.slice(cursor, mt.start);
-        //A部分为促音符号，那么找下一个match元素
+        //A部分为促音符号，那么找下一个match元素并连接
         if(mt.A==="っ" && i+1<matches.length){
             const next = matches[i+1];
             //假名转罗马音(促音转化内部已经写好了取下一个的开头字母)
-            const mergedRomaji = convertBtoRomaji(mt.Braw+next.Braw);
-            out += `{${mt.A+next.A}|${mergedRomaji}}`;
-            i++; cursor = next.end;
+            const tranRomaji = convertBtoRomaji(mt.Braw+next.Braw);
+            out += `{${mt.A+next.A}|${tranRomaji}}`;
+            i++;
+            cursor = next.end;
+        // A部分结尾是促音，则直接转化，不连接
+        } else if (mt.Braw.endsWith("っ") && i+1<matches.length){
+            const next = matches[i+1];
+            //假名转罗马音(促音转化内部已经写好了取下一个的开头字母)
+            const tranRomaji = convertBtoRomaji(mt.Braw,next.Braw);
+            out += `{${mt.A}|${tranRomaji}}`;
+            //i++;
+            cursor = mt.end;
         } else {
             out += `{${mt.A}|${convertBtoRomaji(mt.Braw)}}`;
             cursor = mt.end;
@@ -248,7 +262,6 @@ function processWholeText(text: string): string {
     return out;
 }
 
-// ---- 导出函数 ----
 export function handleKana2Romaji(input:string): string {
     return processWholeText(input);
 }
