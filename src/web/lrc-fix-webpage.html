@@ -124,6 +124,10 @@
         <input type="checkbox" id="syncScroll" checked>
         同步滚动
     </label>
+    <label>
+        <input type="checkbox" id="ignoreError">
+        忽略错误
+    </label>
 </div>
 
 <script>
@@ -140,10 +144,11 @@
 
     async function processData() {
         const input = document.getElementById("input").value;
+        const ignoreError = document.getElementById("ignoreError").checked;
         const resp = await fetch("/lrc-fix/handler", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: input })
+            body: JSON.stringify({ text: input, ignoreError: ignoreError }),
         });
 
         document.getElementById("output").value = (await resp.text());

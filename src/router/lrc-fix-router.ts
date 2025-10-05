@@ -7,11 +7,11 @@ const router = express.Router();
 router.get("/", lrcFixPage);
 // POST /lrc-fix
 router.post("/handler", (req, res) => {
-    const { text } = req.body;
+    const { text, ignoreError } = req.body;
     if (!text) {
         return res.status(400).json({ error: "text is required" });
     }
-    const result = handleRuby(text);
+    const result = handleRuby(text, ignoreError);
     res.type("text/plain; charset=utf-8").send(result);
 });
 

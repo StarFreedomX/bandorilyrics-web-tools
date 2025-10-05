@@ -102,7 +102,7 @@ function interleaveRomajiTimestamps(obj: {romaji: string[],timestamps: string[]}
     return result;
 }
 extendTable();
-export function handleRuby(input:string) {
+export function handleRuby(input:string, ignoreError = false) {
     const output = [];
     const lines = input.split(/\r?\n/);
 
@@ -116,7 +116,8 @@ export function handleRuby(input:string) {
             }
         } catch (e) {
             //console.error("解析失败:", line);
-            output.push(e);
+            if (ignoreError) output.push(line);
+            else output.push(e);
         }
     }
     return output.join('\n');
