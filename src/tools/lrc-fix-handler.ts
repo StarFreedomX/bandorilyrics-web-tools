@@ -15,7 +15,7 @@ function extendTable(){
     }
     romajiTable.push(...extendRomajiTable);
     //console.log(extendRomajiTable);*/
-    romajiTable.push('s','t','p','k')
+    romajiTable.push('s','t','p','k','c')
 }
 
 function splitRuby(line: string) {
