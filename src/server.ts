@@ -3,10 +3,12 @@ import * as dotenv from "dotenv";
 import { lrcFixRouter } from "@/router/lrc-fix-router";
 import { kana2RomajiRouter} from "@/router/kana-to-romaji-router";
 import { mainPageRouter } from "@/router/main-router";
+import {lyricsEditorRouter} from "@/router/lyrics-editor-router";
 import * as process from "node:process";
 import { logger } from "@/logger";
 import https from "https";
 import fs from "fs";
+
 
 dotenv.config();
 
@@ -16,6 +18,7 @@ app.use(express.json());
 app.use("/", mainPageRouter)
 app.use("/lrc-fix", lrcFixRouter);
 app.use("/kana-to-romaji", kana2RomajiRouter);
+app.use("/lyrics-editor", lyricsEditorRouter);
 
 const port: number = parseInt(process.env.PORT || '3002');
 const host: string = process.env.HOST || "localhost";

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8" />
+    <title>歌词编辑器</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 深色主题 */
+        body.dark { background: #121212; color: #e0e0e0; }
+        body.dark header { background: #1f1f1f; color: #fff; }
+        body.dark textarea, body.dark input {
+            background: #1e1e1e; color: #e0e0e0; border: 1px solid #333;
+        }
+        body.dark button {
+            background: #333; color: #fff; border: 1px solid #444; cursor: pointer;
+        }
+
+        /* 浅色主题 */
+        body.light { background: #fdfdfd; color: #222; }
+        body.light header { background: #f0f0f0; color: #222; }
+        body.light textarea, body.light input {
+            background: #fff; color: #222; border: 1px solid #ccc;
+        }
+        body.light button {
+            background: #eee; color: #222; border: 1px solid #ccc; cursor: pointer;
+        }
+
+        header {
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h2 {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            padding: 20px 10vh;
+            gap: 10px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        textarea {
+            width: 100%;
+            height: 50vh;
+            padding: 10px;
+            font-family: Consolas, monospace;
+            font-size: 14px;
+            resize: vertical;
+            border-radius: 8px;
+        }
+
+        .editor-area {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .editor, .preview {
+            flex: 1;
+            min-width: 300px;
+            height: 100%;
+        }
+
+        .preview-box {
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 50vh;
+            overflow: auto;
+            font-family: sans-serif;
+            background: rgba(0,0,0,0.05);
+        }
+
+        .macro-form input {
+            width: 180px;
+            margin-right: 4px;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .macro-item button {
+            margin-left: 4px;
+            padding: 2px 6px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        button {
+            user-select: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+        }
+    </style>
+</head>
+<body class="dark">
+<header>
+    <button onclick="location.href='/'">🏠 返回主页</button>
+    <h2>歌词编辑器</h2>
+    <button onclick="toggleTheme()">切换主题</button>
+</header>
+
+<main>
+    <div class="toolbar" id="toolbar">
+        <strong>工具栏：</strong>
+        <button onclick="wrapSelection('<b>', '</b>')">&lt;b&gt;粗体&lt;/b&gt;</button>
+        <button onclick="wrapSelection('<i>', '</i>')">&lt;i&gt;斜体&lt;/i&gt;</button>
+        <span id="macroButtons"></span>
+    </div>
+
+    <div class="macro-form">
+        <input id="macroHtml" placeholder="宏定义内容，如 <define <ksm> = <span style='color:#FF5522;'>>" oninput="autoResize(this)" style="
+          min-width: 450px;
+          font-family: Consolas, monospace;
+          padding: 5px 8px;
+          border-radius: 6px;
+          border: 1px solid #666;
+          /*background: #1e1e1e;*/
+          color: #e0e0e0;
+          transition: width 0.2s ease;
+        ">
+        <button onclick="addMacro()">添加宏</button>
+    </div>
+    <div id="macroList"></div>
+
+    <div class="editor-area">
+        <div class="editor">
+            <textarea wrap="off" id="input" placeholder="在这里输入歌词（支持 {漢字|かな} 格式）"></textarea>
+            <button onclick="previewLyrics()">预览</button>
+            <button onclick="togglePreviewMode()">切换HTML源码视图</button>
+        </div>
+        <div class="preview">
+            <div id="previewBox" class="preview-box"></div>
+        </div>
+    </div>
+</main>
+
+<script>
+    function toggleTheme() {
+        const body = document.body;
+        body.classList.toggle("dark");
+        body.classList.toggle("light");
+    }
+
+    let macros = {
+    };
+
+    function renderMacros() {
+        const btnContainer = document.getElementById("macroButtons");
+        const listContainer = document.getElementById("macroList");
+        btnContainer.innerHTML = "";
+        listContainer.innerHTML = "";
+
+        for (const [name, html] of Object.entries(macros)) {
+            const btn = document.createElement("button");
+            btn.textContent = `<${name}>`;
+            btn.onclick = () => wrapSelection(`<${name}>`, `</${name}>`);
+            btnContainer.appendChild(btn);
+
+            const div = document.createElement("div");
+            div.className = "macro-item";
+            div.innerHTML = `<code>${escapeHtml(`<define <${name}> = ${html}>`)}</code>
+        <button onclick="editMacro('${name}')">编辑</button>
+        <button onclick="deleteMacro('${name}')">删除</button>`;
+            listContainer.appendChild(div);
+        }
+    }
+
+    function addMacro() {
+        const html = document.getElementById("macroHtml").value.trim();
+        document.getElementById("macroHtml").value = ""
+        if (!html) return alert("请输入宏名和HTML定义");
+        let output = html.replace(
+            /<define\s+(show\s+)?<(\w+)>\s*=\s*(<[^>]+>)\s*>/g,
+            (_, show, tag, html) => {
+                macros[tag] = html;
+                return "";
+            },
+        );
+        localStorage.setItem("macros", JSON.stringify(macros));
+        renderMacros();
+    }
+
+    function editMacro(name) {
+        document.getElementById("macroHtml").value = macros[name];
+    }
+
+    function deleteMacro(name) {
+        delete macros[name];
+        renderMacros();
+    }
+
+    function wrapSelection(startTag, endTag) {
+        const textarea = document.getElementById("input");
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selected = text.substring(start, end);
+        textarea.value = text.substring(0, start) + startTag + selected + endTag + text.substring(end);
+    }
+
+    let showHtml = false;
+    function togglePreviewMode() {
+        showHtml = !showHtml;
+        previewLyrics();
+    }
+
+    function previewLyrics() {
+        const input = document.getElementById("input").value;
+        const output = tranRubyWithMacros(input, macros);
+        const box = document.getElementById("previewBox");
+        box.innerHTML = showHtml ? `<pre>${escapeHtml(output)}</pre>` : output;
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/[&<>"']/g, c => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+        }[c]));
+    }
+
+    // ========== tranRuby核心 ==========
+    function tranRubyWithMacros(input, defines) {
+        let output = input.trim();
+
+        // 自定义标签替换
+        for (const [tag, html] of Object.entries(defines)) {
+            const openTag = new RegExp(`<${tag}>`, "g");
+            const closeTag = new RegExp(`</${tag}>`, "g");
+            const htmlEndTag = html.replace(/^<(\w+)[^>]*>/, "</$1>");
+            output = output.replace(openTag, html).replace(closeTag, htmlEndTag);
+        }
+
+        output = convertMultiline(output);
+        return `
+<style>
+.lyrics rt {
+        font-size: 0.75em;
+    }
+    .lyrics ruby, .lyrics rb, .lyrics rt {
+        background: inherit
+    }
+    .lyrics .hide-rt {
+        visibility:hidden;
+        font-size: 1.333em
+    }
+    .lyrics .colorful {
+        background:-webkit-linear-gradient(var(--l_turn,left),var(--l_colors));
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+        -webkit-box-decoration-break:clone;
+    }
+    .lyrics .colorful::selection,
+    .lyrics .colorful *::selection {
+        background: rgba(255, 255, 255, 0.2); /* 半透明选中背景 */
+    }
+</style>
+<div class="lyrics" style="white-space:pre-wrap;">${output}</div>`;
+    }
+
+    function convertRubyInline(line) {
+        const tagRegex = /(<\/?\w+[^>]*>)/g;
+        const parts = line.split(tagRegex).filter(p => p.length > 0);
+        const converted = [];
+
+        for (const part of parts) {
+            if (part.match(/^<\/?\w/)) {
+                // 是标签，不处理
+                converted.push(part);
+                continue;
+            }
+
+            const rubyRegex = /\{([^|{}]+)\|([^|{}]+)\}/g;
+            let hasRuby = false;
+            let result = "";
+            let rt = "";
+            let lastIndex = 0;
+
+            for (const match of part.matchAll(rubyRegex)) {
+                hasRuby = true;
+                const [raw, kanji, kana] = match;
+                const index = match.index ?? 0;
+
+                const plain = part.slice(lastIndex, index);
+                result += plain;
+                rt += `<span class="hide-rt">${plain}</span>`;
+
+                // 字符宽度对齐算法（恢复）
+                const ml = (0.75 * kana.length - kanji.length) / (kanji.length + 1);
+
+                if (ml >= 0) {
+                    result += `<span style="margin-left:${ml.toFixed(3)}em;letter-spacing:${ml.toFixed(3)}em">${kanji}</span>`;
+                    rt += kana;
+                } else {
+                    result += kanji;
+                    rt += `<span style="margin-left:${(-ml).toFixed(3)}em;letter-spacing:${(-ml).toFixed(3)}em">${kana}</span>`;
+                }
+
+                lastIndex = index + raw.length;
+            }
+
+            const tail = part.slice(lastIndex);
+            result += tail;
+            rt += `<span class="hide-rt">${tail}</span>`;
+
+            if (hasRuby) {
+                converted.push(`<ruby>${result}<rt><span>${rt}</span></rt></ruby>`);
+            } else {
+                converted.push(part);
+            }
+        }
+
+        return converted.join("");
+    }
+
+    function convertMultiline(text) {
+        return text.split(/\r?\n/).map(l => convertRubyInline(l)).join("\n");
+    }
+
+
+    renderMacros();
+
+    function autoResize(input) {
+        input.style.width = Math.max(300, input.value.length * 8 + 20) + 'px';
+    }
+
+    const lyricsInput = document.getElementById("input");
+
+    lyricsInput.value = localStorage.getItem("lyricsInput") || "";
+
+    lyricsInput.addEventListener("input", () => {
+        localStorage.setItem("lyricsInput", lyricsInput.value);
+    });
+
+    macros = JSON.parse(localStorage.getItem("macros") || "{}");
+
+    function addMacro_map(name, html) {
+        macros.push({ name, html });
+        localStorage.setItem("macros", JSON.stringify(macros));
+    }
+    window.addEventListener("DOMContentLoaded", () => {
+        macros.forEach(m => addMacro_map(m.name, m.html));
+        renderMacros();
+    });
+
+    renderMacros();
+
+
+</script>
+</body>
+</html>

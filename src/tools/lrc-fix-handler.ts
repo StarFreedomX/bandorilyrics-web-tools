@@ -3,18 +3,6 @@ import {kanaToRomaji} from "@/tools/kana-to-romaji-handler";
 const romajiTable = Object.values(kanaToRomaji)
 
 function extendTable(){
-    /*const extendRomajiTable = [];
-    for (const romaji of romajiTable){
-      if (romaji.startsWith("p") ||
-      romaji.startsWith("k") ||
-      romaji.startsWith("s") ||
-      romaji.startsWith("t")
-      ){
-        extendRomajiTable.push(romaji.slice(0,1)+romaji);
-      }
-    }
-    romajiTable.push(...extendRomajiTable);
-    //console.log(extendRomajiTable);*/
     romajiTable.push('s','t','p','k','c')
 }
 
