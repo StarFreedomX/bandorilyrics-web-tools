@@ -302,11 +302,25 @@
     }
 
     function previewLyrics() {
-        const input = document.getElementById("input").value;
-        const output = tranRubyWithMacros(input, macros);
+        const textarea = document.getElementById("input");
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+
+        // 把选中区域插入标记
+        let highlightedInput = text;
+        if (end > start) {
+            highlightedInput =
+                text.slice(0, start) +
+                "<sel>" + text.slice(start, end) + "</sel>" +
+                text.slice(end);
+        }
+
+        const output = tranRubyWithMacros(highlightedInput, macros);
         const box = document.getElementById("previewBox");
         box.innerHTML = showHtml ? `<pre>${escapeHtml(output)}</pre>` : output;
     }
+
 
     function escapeHtml(text) {
         return text.replace(/[&<>"']/g, c => ({
@@ -325,6 +339,10 @@
             const htmlEndTag = html.replace(/^<(\w+)[^>]*>/, "</$1>");
             output = output.replace(openTag, html).replace(closeTag, htmlEndTag);
         }
+
+        // ✅ 新增：处理选中标签
+        output = output.replace(/<sel>/g, '<span class="sel-highlight">')
+            .replace(/<\/sel>/g, '</span>');
 
         output = convertMultiline(output);
         return `
@@ -348,6 +366,13 @@
     .lyrics .colorful::selection,
     .lyrics .colorful *::selection {
         background: rgba(255, 255, 255, 0.2); /* 半透明选中背景 */
+    }
+    /*
+    这个标签用于高亮选中内容，实际应用没有这个css，请注意
+     */
+    .sel-highlight {
+        background: rgba(255, 255, 0, 0.3);
+        border-radius: 3px;
     }
 </style>
 <div class="lyrics" style="white-space:pre-wrap;">${output}</div>`;
@@ -439,6 +464,8 @@
         renderMacros();
         previewLyrics();
     });
+    document.getElementById("input").addEventListener("select", previewLyrics);
+
 
     renderMacros();
     previewLyrics();
