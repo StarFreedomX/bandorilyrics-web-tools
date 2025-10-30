@@ -107,6 +107,23 @@
             align-items: center;
         }
 
+        .toolbar {
+            position: sticky;
+            top: 45px; /* 留出 header 高度，避免重叠 */
+            background: inherit; /* 继承主题背景 */
+            z-index: 50; /* 确保在内容上方 */
+            padding: 8px 0;
+        }
+
+        body.dark .toolbar {
+            background: rgba(18, 18, 18, 0.9);
+        }
+        body.light .toolbar {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+
+
         textarea {
             width: 100%;
             height: 50vh;
@@ -275,6 +292,7 @@
         const text = textarea.value;
         const selected = text.substring(start, end);
         textarea.value = text.substring(0, start) + startTag + selected + endTag + text.substring(end);
+        previewLyrics();
     }
 
     let showHtml = false;
