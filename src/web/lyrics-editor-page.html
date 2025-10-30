@@ -212,7 +212,7 @@
     }
 
     function editMacro(name) {
-        document.getElementById("macroHtml").value = macros[name];
+        document.getElementById("macroHtml").value = `<define <${name}> = ${macros[name]}>`;
     }
 
     function deleteMacro(name) {
